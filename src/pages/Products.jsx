@@ -1,12 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
+import axios from "axios";
 import { Navbar } from "../componants/NavBar";
-import {
-  createProduct,
-  deleteProduct,
-  fetchProducts,
-  getErrorMessage,
-  updateProduct,
-} from "../utils/api";
+import { backend_url } from "../config";
+import { getErrorMessage } from "../utils/errors";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-500";
@@ -33,7 +29,8 @@ export function Products() {
     setError("");
     if (showLoader) setLoading(true);
     try {
-      const items = await fetchProducts();
+      const { data } = await axios.get(`${backend_url}/products`);
+      const items = Array.isArray(data?.products) ? data.products : [];
       setProducts(items);
     } catch (err) {
       setError(getErrorMessage(err, "Unable to load products."));
@@ -92,10 +89,10 @@ export function Products() {
     setSaving(true);
     try {
       if (editingId != null) {
-        await updateProduct(editingId, payload);
+        await axios.put(`${backend_url}/products/${editingId}`, payload);
         setSuccess("Product updated successfully.");
       } else {
-        await createProduct(payload);
+        await axios.post(`${backend_url}/products`, payload);
         setSuccess("Product added successfully.");
       }
       resetForm();
@@ -135,7 +132,7 @@ export function Products() {
     setSuccess("");
     setDeletingId(product.id);
     try {
-      await deleteProduct(product.id);
+      await axios.delete(`${backend_url}/products/${product.id}`);
       if (editingId === product.id) {
         resetForm();
       }

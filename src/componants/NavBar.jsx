@@ -1,14 +1,13 @@
 import React from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { clearToken, getStoredToken, getTokenPayload } from "../utils/api";
 
 export function Navbar() {
   const navigate = useNavigate();
-  const token = getStoredToken();
-  const user = getTokenPayload();
+  const token = localStorage.getItem("access_token");
+  const user = getTokenPayload(token);
 
   const handleLogout = () => {
-    clearToken();
+    localStorage.removeItem("access_token");
     navigate("/register");
   };
 
@@ -69,3 +68,15 @@ export function Navbar() {
 }
 
 export default Navbar;
+
+function getTokenPayload(token) {
+  if (!token) return null;
+
+  try {
+    const payload = token.split(".")[1];
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(normalized));
+  } catch {
+    return null;
+  }
+}

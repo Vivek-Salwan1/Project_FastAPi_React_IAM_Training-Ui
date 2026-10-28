@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
+import axios from "axios";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getErrorMessage, loginUser, registerUser } from "../utils/api";
+import { backend_url } from "../config";
+import { getErrorMessage } from "../utils/errors";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100";
@@ -94,7 +96,7 @@ export default function RegisterLogin() {
 
     try {
       if (isRegister) {
-        const data = await registerUser({
+        const { data } = await axios.post(`${backend_url}/register`, {
           name: registerForm.name.trim(),
           email: registerForm.email.trim(),
           password: registerForm.password,
@@ -105,13 +107,14 @@ export default function RegisterLogin() {
         setLoginForm((prev) => ({ ...prev, email: registeredEmail, password: "" }));
         setActiveTab("login");
       } else {
-        const data = await loginUser({
+        const { data } = await axios.post(`${backend_url}/login`, {
           email: loginForm.email.trim(),
           password: loginForm.password,
         });
         if (!data?.access_token) {
           throw new Error("Login succeeded but no access token was returned.");
         }
+        localStorage.setItem("access_token", data.access_token);
         setSuccess("Signed in successfully.");
         navigate("/products");
       }
