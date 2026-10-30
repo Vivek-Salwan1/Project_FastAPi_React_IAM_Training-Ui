@@ -1,12 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
+import axios from "axios";
 import { Navbar } from "../componants/NavBar";
-import {
-  createProduct,
-  deleteProduct,
-  fetchProducts,
-  getErrorMessage,
-  updateProduct,
-} from "../utils/api";
+import { backend_url } from "../config";
+import { getErrorMessage } from "../utils/errors";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-50 disabled:text-slate-500";
@@ -15,6 +11,7 @@ const emptyForm = {
   id: "",
   name: "",
   price: "",
+  category: "",
 };
 
 export function Products() {
@@ -32,7 +29,8 @@ export function Products() {
     setError("");
     if (showLoader) setLoading(true);
     try {
-      const items = await fetchProducts();
+      const { data } = await axios.get(`${backend_url}/products`);
+      const items = Array.isArray(data?.products) ? data.products : [];
       setProducts(items);
     } catch (err) {
       setError(getErrorMessage(err, "Unable to load products."));
@@ -50,6 +48,7 @@ export function Products() {
     const idValue = String(form.id).trim();
     const name = form.name.trim();
     const price = String(form.price).trim();
+    const category = form.category.trim();
 
     if (!idValue) nextErrors.id = "Product ID is required.";
     else if (!/^\d+$/.test(idValue) || Number(idValue) <= 0) {
@@ -59,6 +58,8 @@ export function Products() {
     if (!name) nextErrors.name = "Product name is required.";
 
     if (!price) nextErrors.price = "Price is required.";
+
+    if (!category) nextErrors.category = "Category is required.";
 
     return nextErrors;
   };
@@ -82,15 +83,16 @@ export function Products() {
       id: Number(form.id),
       name: form.name.trim(),
       price: String(form.price).trim(),
+      category: form.category.trim(),
     };
 
     setSaving(true);
     try {
       if (editingId != null) {
-        await updateProduct(editingId, payload);
+        await axios.put(`${backend_url}/products/${editingId}`, payload);
         setSuccess("Product updated successfully.");
       } else {
-        await createProduct(payload);
+        await axios.post(`${backend_url}/products`, payload);
         setSuccess("Product added successfully.");
       }
       resetForm();
@@ -113,6 +115,7 @@ export function Products() {
       id: String(product.id),
       name: product.name ?? "",
       price: product.price ?? "",
+      category: product.category ?? "",
     });
     setFieldErrors({});
     setError("");
@@ -129,7 +132,7 @@ export function Products() {
     setSuccess("");
     setDeletingId(product.id);
     try {
-      await deleteProduct(product.id);
+      await axios.delete(`${backend_url}/products/${product.id}`);
       if (editingId === product.id) {
         resetForm();
       }
@@ -248,6 +251,29 @@ export function Products() {
                 ) : null}
               </div>
 
+              <div>
+                <label htmlFor="product-category" className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Category
+                </label>
+                <input
+                  id="product-category"
+                  name="category"
+                  type="text"
+                  required
+                  value={form.category}
+                  onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}
+                  placeholder="e.g. Electronics"
+                  className={inputClass}
+                  aria-invalid={Boolean(fieldErrors.category)}
+                  aria-describedby={fieldErrors.category ? "product-category-error" : undefined}
+                />
+                {fieldErrors.category ? (
+                  <p id="product-category-error" className="mt-1.5 text-xs text-red-600">
+                    {fieldErrors.category}
+                  </p>
+                ) : null}
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button
                   type="submit"
@@ -290,19 +316,20 @@ export function Products() {
                     <th className="px-5 py-3">ID</th>
                     <th className="px-5 py-3">Name</th>
                     <th className="px-5 py-3">Price</th>
+                    <th className="px-5 py-3">Category</th>
                     <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={4} className="px-5 py-10 text-center text-slate-500">
+                      <td colSpan={5} className="px-5 py-10 text-center text-slate-500">
                         Loading products...
                       </td>
                     </tr>
                   ) : products.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-5 py-10 text-center text-slate-500">
+                      <td colSpan={5} className="px-5 py-10 text-center text-slate-500">
                         No products yet. Add one to get started.
                       </td>
                     </tr>
@@ -312,6 +339,7 @@ export function Products() {
                         <td className="px-5 py-3 font-medium text-slate-700">{product.id}</td>
                         <td className="px-5 py-3">{product.name}</td>
                         <td className="px-5 py-3">{product.price}</td>
+                        <td className="px-5 py-3">{product.category?.trim() || "Uncategorized"}</td>
                         <td className="px-5 py-3">
                           <div className="flex justify-end gap-2">
                             <button
